@@ -1,6 +1,6 @@
 #include <iostream>
 #include <arm_neon.h>
-
+//#include "NEON_2_SSE.hpp"
 using namespace std;
 
 #define alpha 0.01

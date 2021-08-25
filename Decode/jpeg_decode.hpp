@@ -12,6 +12,6 @@
 #include <jpeglib.h>
 #include <jerror.h>
 #include <arm_neon.h>
-
+//#include "NEON_2_SSE.hpp"
 void jpeg_decode(unsigned char *buffer, uint8_t red[307200], uint8_t green[307200], uint8_t blue[307200]);
 

@@ -1,8 +1,6 @@
-FROM dymat/opencv:arm32v7
+FROM kienkauko/arm32v7ubuntu:gnu
 COPY qemu-arm-static /usr/bin
 COPY . /home
 WORKDIR /home
 RUN make
-CMD ["./sendensity"]
-
-EXPOSE 9002
+EXPOSE 9002 9001

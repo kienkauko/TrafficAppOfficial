@@ -1,5 +1,5 @@
 all:
-	g++ -std=c++11 ReceiveDensity.cpp -o receivedensity -ljpeg
+	g++ Los.cpp -o los
 compile:
 #add -mfpu=neon for RaspberryPi
 #chANGE directory when change folder

@@ -5,8 +5,10 @@
 
 #define IMAGE_SIZE 921600
 #define MUY_SIZE 307200
-#define TIMEOUT 120
+#define TIMEOUT 10
 #define BILLION 1E9
+#define PORT1 9000
+#define PORT2 9001
 
 int network_socket;
 uint8_t gray5f[5*307200];								// 5 frames for background initiate 
@@ -29,7 +31,8 @@ int main(int argc, char* argv[]){
     int i = 0;
     int server_fd, new_socket;
     struct sockaddr_in address;
-    struct timespec end_p, start_p;//measure time to process
+    struct timespec end_p; //measure time to process
+    struct timespec start_d, end_d; //measure time of disconnection
     int opt = 1;
     int addrlen = sizeof(address);
     
@@ -41,13 +44,18 @@ int main(int argc, char* argv[]){
         perror("socket failed");
         exit(EXIT_FAILURE);
     }
- 
+    
+    
+    cout << "You have entered " << argc 
+         << " arguments:" << "\n"; 
+  
+    for (int i = 0; i < argc; ++i) 
+        cout << argv[i] << "\n";
     
     address.sin_family = AF_INET; 
     address.sin_addr.s_addr = INADDR_ANY; 
-    address.sin_port = htons(9002); 
+    address.sin_port = htons(PORT1); 
        
-
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address))<0) 
     { 
         perror("bind failed"); 
@@ -66,14 +74,14 @@ else printf("Successful create socket\n");
 // specify an address for the socket
 struct sockaddr_in server_address;
 server_address.sin_family = AF_INET;
-server_address.sin_port = htons(9003);
+server_address.sin_port = htons(PORT2);
 //server_address.sin_addr.s_addr = inet_addr(ip);
 int connection_status = 0;
 int reconnection_flag=0;
 int connection_status_copy = 0;
 
 	do{
-		server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
+		server_address.sin_addr.s_addr = inet_addr(argv[1]);
 		connection_status = connect(network_socket, (struct sockaddr *) &server_address, sizeof(server_address));
 		
 		sleep(1);
@@ -84,7 +92,7 @@ int check_send_var = 0;
 int check_send_gray = 0;
 int check_recv = 0;
 double starttime = 0;
-double endtime = 0;
+double starttime_d = 0; double endtime_d = 0;
 /**************************************/
 
 
@@ -97,9 +105,7 @@ new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen
 
 		for (i; i < 5; i++){
 	//send(new_socket, respon, strlen(respon), 0);
-						 recv(new_socket, &starttime, 8, MSG_WAITALL);
-			
-		
+			recv(new_socket, &starttime, 8, MSG_WAITALL);
 			check_recv = recv(new_socket, buf_vel, IMAGE_SIZE,MSG_WAITALL); 
 			jpeg_decode(buf_vel, red, green, blue);
 			rgbtogray (red, green, blue, gray5f_p);
@@ -111,39 +117,34 @@ new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen
 				cout << " Done background-int! " << endl;
 				check_send_muy = send(network_socket, muy, MUY_SIZE, MSG_NOSIGNAL);
 				check_send_var = send(network_socket, var, MUY_SIZE, MSG_NOSIGNAL);
-				// announce that this will send background initiation files
-				// start sending massage, thing got complicated here.......
+				int time_to_out = 0;
 				while (check_send_muy == -1 || check_send_var == -1){
 					cout << "Disconnect to server!trying to reconnect in 2s ... \n";
 					cout << "Previous packet will be dumped! \n";
-			///attempt to reconnect/////////////////////////////
 					network_socket = socket(AF_INET, SOCK_STREAM, 0);
-					
 					connection_status = connect(network_socket, (struct sockaddr *) &server_address, sizeof(server_address));
 			
 					if(connection_status == -1){
-						cout << "Connecting to public ip... " << endl;
-						
 						sleep(1);
+						time_to_out ++;
 						cout << "Reconnection status: " << connection_status << endl;
+						cout << "Time left to timeout: " << TIMEOUT - time_to_out << endl;
 					}
 			
 					if (connection_status != -1){
-						cout << "Server Density has accepted connection, connection status: " << connection_status << endl;
+						cout << "Reconnect successfully!" << endl;
 						break;
+					}
+					if(time_to_out >= TIMEOUT){
+						cout << "Timeout reached, exit." << endl;
+						return -1;
 					}
 				}
 			}
 		}
 		////////receive time and image ///////////////
-		clock_gettime(CLOCK_REALTIME, &start_p);
-					 recv(new_socket, &starttime, 8, MSG_NOSIGNAL);
-
+		recv(new_socket, &starttime, 8, MSG_NOSIGNAL);
         check_recv = recv(new_socket, buf_vel, IMAGE_SIZE, MSG_WAITALL);
-
-	clock_gettime( CLOCK_REALTIME, &end_p);
-                double difference2 = end_p.tv_sec - start_p.tv_sec  + (double)(end_p.tv_nsec - start_p.tv_nsec)/BILLION;
-                cout << "It took " << difference2 << " seconds to receive image " << endl;
         	
 		if (check_recv == 0){
 			cout << "Client has been stopped by some reasons, waiting for reconnection ... \n";
@@ -157,50 +158,51 @@ new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen
 //		fclose(check_buff);
 		//////////////////////////////////////////////
 		
-
-
-		clock_gettime( CLOCK_REALTIME, &start_p);            
 		decode_gray();
-	//	cout << "Start sending gray image, no more background \n";
+		cout << "Start sending gray image, no more background \n";
 		
-		clock_gettime( CLOCK_REALTIME, &end_p);
-                double difference3 = end_p.tv_sec - start_p.tv_sec  + (double)(end_p.tv_nsec - start_p.tv_nsec)/BILLION;
-                cout << "It took " << difference3 << " seconds to convert to gray image " << endl;
-
 		//send data section//////
-		clock_gettime( CLOCK_REALTIME, &start_p);            
-
-						  send(network_socket, &starttime, 8, MSG_NOSIGNAL); // send starting time
-
+		send(network_socket, &starttime, 8, MSG_NOSIGNAL); // send starting time
 		check_send_gray = send(network_socket, gray1f, sizeof(gray1f), MSG_NOSIGNAL);
 		
-		clock_gettime( CLOCK_REALTIME, &end_p);
-                double difference4 = end_p.tv_sec - start_p.tv_sec  + (double)(end_p.tv_nsec - start_p.tv_nsec)/BILLION;
-                //cout << "It took " << difference4 << " seconds to send gray image " << endl;
+		int time_to_out = 0;
+		int count = 0;
 		while(check_send_gray == -1){
+			if(count == 0){
+				clock_gettime( CLOCK_REALTIME, &start_d); // get disconnection time
+				starttime_d = start_d.tv_sec + (double)(start_d.tv_nsec)/BILLION;
+			}
 			cout << "Disconnect to server!trying to reconnect in 2s ... \n";
 			cout << "Previous packet will be dumped! \n";
-			///attempt to reconnect/////////////////////////////
-			network_socket = socket(AF_INET, SOCK_STREAM, 0);
-					
+
+			network_socket = socket(AF_INET, SOCK_STREAM, 0);	
 			connection_status = connect(network_socket, (struct sockaddr *) &server_address, sizeof(server_address));
 			
 			if(connection_status == -1){
-				cout << "Connecting to public ip... " << endl;
 				sleep(1);
+				time_to_out ++;
 				cout << "Reconnection status: " << connection_status << endl;
+				cout << "Time left to timeout: " << TIMEOUT - time_to_out << endl;
 			}
 			if (connection_status != -1){
-				cout << "Reconnect successfully! \n";
-				cout << "Sending muy, var ...\n";
+				clock_gettime( CLOCK_REALTIME, &end_d); // get reconnection time
+				endtime_d = end_d.tv_sec + (double)(end_d.tv_nsec)/BILLION;
+				cout << "Reconnect successfully!" << endl;
+				cout << "Resending muy, var ..." << endl;
 				send(network_socket, muy, MUY_SIZE, MSG_NOSIGNAL);
 				send(network_socket, var, MUY_SIZE, MSG_NOSIGNAL);
 				break;
 			}
+			if(time_to_out >= TIMEOUT){
+				cout << "Timeout reached, exit." << endl;
+				return -1;
+			}
 		}
 		clock_gettime( CLOCK_REALTIME, &end_p);
 		double difference = end_p.tv_sec  + (double)(end_p.tv_nsec)/BILLION - starttime;
-		//cout << "It took " << difference << " seconds to process " << endl;
+		double difference_d = endtime_d - starttime_d;
+		cout << "It took " << difference << " seconds to process " << endl;
+		cout << "It took " << difference_d << " seconds to reconnect " << endl;
 	}
 	close(network_socket);
 	return 0;

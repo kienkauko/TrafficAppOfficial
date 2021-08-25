@@ -2,5 +2,4 @@ FROM kienkauko/ubuntu:gnu
 COPY . /home
 WORKDIR /home
 RUN make
-EXPOSE 9000
-
+EXPOSE 9002

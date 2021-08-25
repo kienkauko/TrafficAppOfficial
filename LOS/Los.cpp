@@ -1,8 +1,9 @@
 #include "all_lib.hpp"
 
 #define BILLION 1E9
+#define PORT 9002
 
-int main(int argc, char* argv[]){
+int main(){
 		//int i = 0;
 		int lan_do_so=0;
 		uint32_t av_density=0;
@@ -23,18 +24,18 @@ int main(int argc, char* argv[]){
       socket_desc = socket(AF_INET , SOCK_STREAM , 0);
       if (socket_desc == -1){
          printf("Could not create socket");
+      } 
+	  
+	  int enable = 1;
+	  if (setsockopt(socket_desc, SOL_SOCKET, SO_REUSEPORT, &enable, sizeof(int)) < 0){
+      	printf("setsockopt(SO_REUSEPORT) failed");
+    	return -1;
+      }else{
+      	printf("Duong oc cho");
       }
-  	  int opt = 1;
-      if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, 
-                                                  &opt, sizeof(opt))) 
-    { 
-        perror("setsockopt"); 
-        exit(EXIT_FAILURE); 
-    } 
-    //return 0;
-      server.sin_family = AF_INET;
+      
       server.sin_addr.s_addr = INADDR_ANY;
-      server.sin_port = htons(9004);
+      server.sin_port = htons(PORT);
 
       //Bind
      if( bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0){

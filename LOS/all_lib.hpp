@@ -1,9 +1,3 @@
-//#include <opencv2/core/core.hpp>
-//#include <opencv2/highgui/highgui.hpp>
-//#include <opencv2/features2d/features2d.hpp>
-//#include <opencv2/opencv.hpp>
-//#include <opencv/cv.h>
-
 #include <time.h>
 #include <iostream>
 #include <cmath>
@@ -26,8 +20,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <linux/videodev2.h>
-#include <arm_neon.h>
-#include <sstream>
-#include <fstream>
+#include <unistd.h>
 
-//using namespace std;
+using namespace std; 

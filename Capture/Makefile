@@ -1,5 +1,5 @@
 all:
-	g++ -std=c++11 Capture.cpp -o capture -ljpeg
+	g++ Capture.cpp -o capture
 compile:
 
 #change directory when change folder
